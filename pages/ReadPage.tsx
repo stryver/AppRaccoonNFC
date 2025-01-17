@@ -1,60 +1,81 @@
-import React, {useState} from 'react';
-import {Alert, Button, Text} from 'react-native';
+import React, { useState } from "react";
+import { Alert, Text, View } from "react-native";
 import { MenuWrapper } from "../components/Menu";
-import NfcManager, {Ndef, NfcTech} from "react-native-nfc-manager";
+import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
+import { faNfcSymbol } from "@fortawesome/free-brands-svg-icons";
+import { WaveIndicator } from "react-native-indicators";
+import { RcNfcRead } from "../nfcTools";
+import { Button } from "@rneui/themed";
 
 export default function ReadPage() {
+  const [tagContent, setTagContent] = useState<string | undefined>(undefined);
+  const [loading, setLoading] = useState<boolean>(false);
 
-    const [tagContent, setTagContent] = useState<string | null>(null);
+  const readNfcTag = async () => {
+    setTagContent(undefined);
+    setLoading(true);
+    setTagContent(await RcNfcRead());
+    setLoading(false);
+  };
 
-    const readNfcTag = async () => {
-        try {
-            await NfcManager.requestTechnology(NfcTech.Ndef);
-
-            const tag = await NfcManager.getTag();
-            console.log('Tag NFC lu :', JSON.stringify(tag, null, 2));
-
-            if (tag?.ndefMessage) {
-                const record = tag.ndefMessage[0];
-                console.log('Enregistrement NFC :', record);
-
-                // Vérifie et convertit `record.type` en tableau de nombres
-                const typeArray = Array.isArray(record.type) ? record.type : [];
-                const type = String.fromCharCode(...typeArray);
-                const payload = Uint8Array.from(record.payload);
-
-                let text = '';
-
-                // Identifier le type d'enregistrement
-                if (type === 'U') {
-                    // Type URI
-                    text = Ndef.uri.decodePayload(payload);
-                } else if (type === 'T') {
-                    // Type Texte
-                    text = Ndef.text.decodePayload(payload);
-                } else {
-                    text = `Type de contenu non supporté : ${type}`;
-                }
-
-                setTagContent(text);
-                Alert.alert('Tag NFC lu', text);
-            } else {
-                setTagContent('Aucun contenu détecté sur le tag.');
-                Alert.alert('Erreur', 'Tag vide ou non lisible.');
-            }
-        } catch (error) {
-            console.warn(error);
-            Alert.alert('Erreur', 'Impossible de lire le tag NFC.');
-        } finally {
-            await NfcManager.cancelTechnologyRequest();
-        }
-    };
-
-    return (
-        <MenuWrapper active="Read">            <Text>Lecture de Tag NFC</Text>
-            <Button title="Lire un Tag NFC" onPress={readNfcTag} />
-            {tagContent && <Text>{`Contenu du tag : ${tagContent}`}</Text>}
-        </MenuWrapper>
-    );
-
+  return (
+    <MenuWrapper active="Read">
+      <View style={{ alignItems: "center", marginTop: 40, marginBottom: 40 }}>
+        <FontAwesomeIcon icon={faNfcSymbol} size={100} color={"white"} />
+      </View>
+      <Button
+        buttonStyle={{
+          backgroundColor: "#2d2a55",
+          borderRadius: 5,
+          padding: 10,
+        }}
+        title={loading ? "En attente de lecture" : "Lire un Tag NFC"}
+        onPress={readNfcTag}
+        disabled={loading}
+      />
+      {loading && (
+        <View
+          style={{
+            alignItems: "center",
+            marginTop: 20,
+            marginBottom: 20,
+          }}
+        >
+          <WaveIndicator size={100} color="#6c8677" />
+        </View>
+      )}
+      {tagContent && (
+        <View
+          style={{
+            marginTop: 20,
+            padding: 10,
+            backgroundColor: "#6c8677",
+            borderRadius: 5,
+          }}
+        >
+          <Text
+            style={{
+              color: "#fff",
+              fontWeight: "bold",
+              fontSize: 18,
+              textAlign: "center",
+            }}
+          >
+            Contenu du tag :
+          </Text>
+          <Text
+            style={{
+              color: "#fff",
+              fontWeight: "bold",
+              fontSize: 14,
+              marginTop: 20,
+              textAlign: "center",
+            }}
+          >
+            {tagContent}
+          </Text>
+        </View>
+      )}
+    </MenuWrapper>
+  );
 }
